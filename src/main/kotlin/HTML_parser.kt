@@ -1,62 +1,79 @@
+package ro.mike.tuiasi
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Document
-import java.io.IOException
+import org.jsoup.select.Elements
+import java.io.File
+/**
+ * @param url - Uniform Resource Locator - address of an website
+ * @return HTML content corresponding to the URL as a string
+ */
 
-class Page(var link:String, var listaLinkuri: MutableList<Page> = mutableListOf() )
+class Item(var prop: Map<Elements,Elements> = mapOf<Elements,Elements>(), var link: Elements)
 {
     fun print()
     {
-        if(listaLinkuri.isEmpty())
+        prop.forEach()
         {
-            print(link+" ")
-            return
+            print("Titlu: ");
+            println(it.key.text());
         }
-
-        print("\n"+link+ " URMATOARE: ->>>>>>>>")
-
-        for(lll in listaLinkuri)
-        {
-            lll.print();
-        }
-
+        println("Link: ${link.text()}")
 
     }
-    fun generate()
-    {
-        val document = Jsoup.connect(link).get()
-        //Get links from document object.
-        val legaturi = document.select("a[href]")
-        //Iterate links and print link attributes.
-        for (iter in legaturi)
-        {
-            if(iter.attr("href").startsWith(link))
-            {
-                var auxPage = Page(iter.attr("href"))
-                listaLinkuri.add(auxPage)
-                val document2 = Jsoup.connect(iter.attr("href")).get()
-                //Get links from document object.
-                val legaturi2 = document.select("a[href]")
-                //Iterate links and print link attributes.
-                for (iter2 in legaturi)
-                {
-                    if (iter2.attr("href").startsWith(link)) {
-                        var auxPage2 = Page(iter.attr("href"))
-                        auxPage.listaLinkuri.add(auxPage2)
-                    }
-                }
-            }
-        }
+}
+
+fun testKhttpGetRequest(url: String) : String {
+    val response = khttp.get(url)
+    println("${response.statusCode}\t ${response.headers["Content-Type"]}")
+    return response.text
+}
+
+fun testJsoup(source: String, url: String, baseURI: String?=null) {
+    var htmlDocument: Document? = null
+    htmlDocument = when(source) {
+        "url" -> Jsoup.connect(url).get()
+        "file" -> Jsoup.parse(File(url), "UTF-8", baseURI)
+        "string" -> Jsoup.parse(url)
+        else -> throw Exception("Unknown source")
     }
-
-
+    val cssHeadlineSelector: String = "#khttp-http-without-the-bullshit h1"
+    val cssParagraphSelector = "#khttp-http-without-the-bullshit p"
+    val cssLinkSelector = "#khttp-http-without-the-bullshit > p > a"
+    println(htmlDocument.title())
+    println(htmlDocument.select(cssHeadlineSelector).text())
+    val paragraphs: Elements = htmlDocument.select(cssParagraphSelector)
+    for (paragraph in paragraphs) {
+        println("\t${paragraph.text()}")
+    }
+    val links = htmlDocument.select(cssLinkSelector)
+    println("-".repeat(100))
+    for (link in links) {
+        println("${link.text()}\n\t${link.absUrl("href")}")
+    }
 }
 
 
 
+fun main() {
+    var document = Jsoup.connect("http://rss.cnn.com/rss/edition.rss").get();
+    println("Items: ")
 
-fun main(args: Array<String>)
-{
-    var myWebsite = Page("https://sso.tuiasi.ro/auth/realms/TUIASI/protocol/openid-connect/auth?client_id=edu.tuiasi.ro&response_type=code&redirect_uri=https%3A%2F%2Fedu.tuiasi.ro%2Fadmin%2Foauth2callback.php&state=%2Fauth%2Foauth2%2Flogin.php%3Fwantsurl%3Dhttps%253A%252F%252Fedu.tuiasi.ro%252F%26sesskey%3DhdKQriyzOQ%26id%3D3&scope=openid%20profile%20email")
-    myWebsite.generate()
-    myWebsite.print()
+    var items:Elements = document.getElementsByTag("Item")
+    var ItemList: MutableList<Item> = mutableListOf();
+
+    var contor = 0;
+    for (item in items)
+    {
+        var titlu: Elements =  item.select("title");
+        var descriere = item.select("description")
+        var priorit : Map<Elements,Elements> = mapOf(titlu to descriere)
+
+        var link: Elements = item.select("link")
+        ItemList.add(contor, Item(priorit,link))
+        contor++
+    }
+    for (item in ItemList)
+    {
+        item.print()
+    }
 }
